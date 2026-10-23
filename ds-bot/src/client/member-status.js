@@ -5,23 +5,24 @@ import { SPRING_SHAPE, SPRING_TAP, spring, useLinger } from './motion.js'
 import { t } from './i18n.js'
 
 // -------------------------------------------------------------------------
-// What a group's members are doing: above the group's composer, one capsule for the
-// members at work or waiting for an approval; above a Bot's own composer, one for the
-// groups it is at work in; and per member in the details panel, where the approvals
-// their group turns wait on are answered.
+// What a group's members are doing in it: above the group's composer, one capsule for
+// the members at work in this group or waiting for an approval; above a Bot's own
+// composer, one for the groups it is at work in; and per member in the details panel,
+// where the approvals their group turns wait on are answered. Work that runs elsewhere
+// shows on the Bot itself, not in every group it is a member of.
 
 const NO_WORK = { bots: {}, rooms: {}, approvals: [] }
 const FACES_MAX = 3
 const DOCK_EXIT_MS = 160
 
-// Work in this group wins over the Bot's own chat or another group.
+// A group shows only the work that runs in it; the Bot's own chat and its other
+// groups show that work on the Bot itself.
 export function memberWork(room, work = NO_WORK) {
   const here = work.rooms?.[room.id] ?? []
   return room.members.map((id) => {
     const approvals = (work.approvals ?? []).filter(entry => entry.botId === id)
     const local = here.find(entry => entry.botId === id)
-    const doing = local ? { ...local, roomId: room.id } : work.bots?.[id]
-    return { id, approvals, doing, here: local !== undefined, state: approvals.length > 0 ? 'ask' : doing ? 'work' : 'idle' }
+    return { id, approvals, doing: local, here: local !== undefined, state: approvals.length > 0 ? 'ask' : local ? 'work' : 'idle' }
   })
 }
 
@@ -33,7 +34,7 @@ export function busyMembers(room, work, roster) {
 }
 
 // The capsule leaves out the round's current speaker, which its round shows.
-const dockMembers = busy => busy.filter(entry => !(entry.state === 'work' && entry.here && entry.doing.speaking === true))
+const dockMembers = busy => busy.filter(entry => !(entry.state === 'work' && entry.doing.speaking === true))
 
 export const workState = doing => (doing?.switching ? 'thinking' : toolState(doing?.tool ?? ''))
 
@@ -149,14 +150,11 @@ function ApprovalCard({ approval, bot, actions }) {
         h('button', { type: 'button', className: 'bt-q-btn', onClick: () => actions.openSession(bot.id) }, t("Open {name}'s chat", { name: bot.name }))))
 }
 
-// A member's second line in the group's details: what it is doing and where, or its role.
-export function MemberState({ entry, bot, room, roster }) {
+// A member's second line in the group's details: what it is doing in this group, or its role.
+export function MemberState({ entry, bot }) {
   if (entry?.state === 'ask') return stateLine('bt-member-state bt-mw-ask', entry.approvals[0].at, t('Waiting for your approval'))
   if (entry?.state !== 'work') return bot.role ? stateLine('bt-member-state', undefined, bot.role) : null
-  const where = entry.doing.roomId === room.id ? ''
-    : entry.doing.roomId ? t('in {name}', { name: roster.roomsById[entry.doing.roomId]?.name ?? t('a group chat') })
-      : t('in its own chat')
-  return stateLine('bt-member-state', entry.doing.since, h(Shimmer, null, `${workPhrase(entry.doing)}…`), where ? ` ${where}` : '')
+  return stateLine('bt-member-state', entry.doing.since, h(Shimmer, null, `${workPhrase(entry.doing)}…`))
 }
 
 // Work in this group can be stopped from its details, since the user cannot reach the

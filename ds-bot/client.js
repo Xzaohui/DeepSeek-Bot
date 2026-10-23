@@ -13834,15 +13834,14 @@ function memberWork(room2, work = NO_WORK) {
   return room2.members.map((id) => {
     const approvals = (work.approvals ?? []).filter((entry) => entry.botId === id);
     const local = here.find((entry) => entry.botId === id);
-    const doing = local ? { ...local, roomId: room2.id } : work.bots?.[id];
-    return { id, approvals, doing, here: local !== void 0, state: approvals.length > 0 ? "ask" : doing ? "work" : "idle" };
+    return { id, approvals, doing: local, here: local !== void 0, state: approvals.length > 0 ? "ask" : local ? "work" : "idle" };
   });
 }
 function busyMembers(room2, work, roster) {
   const busy = memberWork(room2, work).filter((entry) => entry.state !== "idle" && roster.byId[entry.id]);
   return [...busy.filter((entry) => entry.state === "ask"), ...busy.filter((entry) => entry.state === "work")].map((entry) => ({ ...entry, bot: roster.byId[entry.id] }));
 }
-var dockMembers = (busy) => busy.filter((entry) => !(entry.state === "work" && entry.here && entry.doing.speaking === true));
+var dockMembers = (busy) => busy.filter((entry) => !(entry.state === "work" && entry.doing.speaking === true));
 var workState = (doing) => doing?.switching ? "thinking" : toolState(doing?.tool ?? "");
 function botGroupWork(botId, work, roster) {
   return Object.entries(work.rooms ?? {}).flatMap(([roomId, entries2]) => {
@@ -13963,11 +13962,10 @@ function ApprovalCard({ approval, bot, actions }) {
     )
   );
 }
-function MemberState({ entry, bot, room: room2, roster }) {
+function MemberState({ entry, bot }) {
   if (entry?.state === "ask") return stateLine("bt-member-state bt-mw-ask", entry.approvals[0].at, t("Waiting for your approval"));
   if (entry?.state !== "work") return bot.role ? stateLine("bt-member-state", void 0, bot.role) : null;
-  const where = entry.doing.roomId === room2.id ? "" : entry.doing.roomId ? t("in {name}", { name: roster.roomsById[entry.doing.roomId]?.name ?? t("a group chat") }) : t("in its own chat");
-  return stateLine("bt-member-state", entry.doing.since, (0, import_react36.createElement)(Shimmer, null, `${workPhrase(entry.doing)}…`), where ? ` ${where}` : "");
+  return stateLine("bt-member-state", entry.doing.since, (0, import_react36.createElement)(Shimmer, null, `${workPhrase(entry.doing)}…`));
 }
 function StopMemberWork({ entry, bot, room: room2, actions }) {
   const [stopping, setStopping] = (0, import_react36.useState)(false);
@@ -14187,7 +14185,7 @@ function MemberPile({ room: room2, roster }) {
   );
 }
 var markOf = (entry) => entry?.state === "ask" ? "alert" : entry?.state === "work" ? workState(entry.doing) : "idle";
-function MemberRow({ member, entry, room: room2, roster, actions }) {
+function MemberRow({ member, entry, room: room2, actions }) {
   return (0, import_react37.createElement)(
     "div",
     { role: "listitem", className: "bt-member" },
@@ -14207,7 +14205,7 @@ function MemberRow({ member, entry, room: room2, roster, actions }) {
             (0, import_react37.createElement)("span", { className: "bt-member-name" }, member.name),
             room2.admin === member.id ? (0, import_react37.createElement)("span", { className: "bt-tag" }, t("Admin")) : null
           ),
-          (0, import_react37.createElement)(MemberState, { entry, bot: member, room: room2, roster })
+          (0, import_react37.createElement)(MemberState, { entry, bot: member })
         )
       ),
       (0, import_react37.createElement)(StopMemberWork, { entry, bot: member, room: room2, actions })
@@ -14229,7 +14227,6 @@ function GroupOverview({ room: room2, roster, actions, usage, useWork, openSetti
         member,
         entry: entries2.find((item) => item.id === member.id),
         room: room2,
-        roster,
         actions
       })))
     ),
