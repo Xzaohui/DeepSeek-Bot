@@ -61,6 +61,7 @@ const unseenLines = (room, memberId) => {
 const noticeText = (line) => {
   if (line.reason === 'missed') return `${(line.names ?? []).join(' and ')} did not answer within ${line.minutes} minutes, so this round moved on without it. If it is still working, it posts its result later as a late reply; if it is urgent, the user can write here or the admin can follow up.`
   if (line.reason === 'paused') return `Paused: Bots have called each other ${line.limit} times since the user last wrote here. The calls to @${(line.names ?? []).join(' and @')} wait until the user continues or writes here; do not call them again.`
+  if (line.reason === 'cut') return `This round was cut off before it reached ${(line.names ?? []).map(name => `@${name}`).join(' and ')} — a restart, a stop or a fresh part ended the relay's turn. The call waits like a paused one: it runs when the group continues, so do not call the member again.`
   return line.text ?? ''
 }
 // `text` is what to show of a message line, by default what the log keeps of it.
@@ -645,6 +646,19 @@ export function install(rt) {
       }
       if (exec.signal?.aborted) {
         for (const turn of round.started) void rt.stopRoomTurn?.(room.sessions?.[turn.botId] ?? turn.sessionId, turn.exchangeId)
+      }
+      // A round that ends without reaching a called member once lost the call in
+      // silence: a restart, a stop or a fresh part cut the relay's own turn, and the
+      // waiting slots were dropped with it. They park the way the relay limit parks
+      // its calls, and the log says so — a call never ends in silence.
+      const unreached = round.slots.filter(slot => slot.status === 'waiting')
+      if (unreached.length > 0) {
+        const paused = (room.paused ??= [])
+        for (const slot of unreached) {
+          if (paused.some(entry => entry.id === slot.id)) continue
+          paused.push({ id: slot.id, name: slot.name, ...(slot.note !== undefined ? { note: slot.note } : {}), ...(slot.by !== undefined ? { by: slot.by } : {}) })
+        }
+        appendRoom(room, { who: 'DS Bot', kind: 'notice', reason: 'cut', names: [...new Set(unreached.map(slot => slot.name))] })
       }
       await rt.save()
       for (const post of posts) {
