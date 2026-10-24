@@ -15,11 +15,14 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 - In the desktop app you can import cookies into a Bot's browser from a file or from an installed Chrome, Edge or Firefox profile. ([#458](https://github.com/Fei2411/DeepSeek-Bot/issues/458), [#461](https://github.com/Fei2411/DeepSeek-Bot/pull/461))
 - Bot mode's account menu has a Sign out item for the DeepSeek account. ([#398](https://github.com/Fei2411/DeepSeek-Bot/issues/398), [#425](https://github.com/Fei2411/DeepSeek-Bot/pull/425))
 - A saved key's purpose can be edited or cleared in Settings → Secrets. ([#387](https://github.com/Fei2411/DeepSeek-Bot/issues/387), [#435](https://github.com/Fei2411/DeepSeek-Bot/pull/435))
+- Bots can draw charts, small calculators whose numbers update as you drag, and custom sandboxed views in their replies. ([#468](https://github.com/Fei2411/DeepSeek-Bot/issues/468), [#471](https://github.com/Fei2411/DeepSeek-Bot/pull/471))
 
 ### Changed
 
 - Chat bubbles widen with the window instead of stopping at a fixed width. ([#380](https://github.com/Fei2411/DeepSeek-Bot/issues/380), [#447](https://github.com/Fei2411/DeepSeek-Bot/pull/447))
 - A Bot's thinking is hidden by default; turn on **Show thinking** in Settings → General → Appearance to see it above the reply. Bot chats no longer show lines such as "Tools updated". ([#465](https://github.com/Fei2411/DeepSeek-Bot/issues/465), [#466](https://github.com/Fei2411/DeepSeek-Bot/pull/466))
+- Only one right panel opens at a time, and the Bot drawer has a New terminal button in place of the header's right-sidebar toggle. ([#456](https://github.com/Fei2411/DeepSeek-Bot/issues/456), [#470](https://github.com/Fei2411/DeepSeek-Bot/pull/470))
+- In the desktop app, a file you download from the window, such as a chart image, asks where to save it. ([#476](https://github.com/Fei2411/DeepSeek-Bot/issues/476), [#477](https://github.com/Fei2411/DeepSeek-Bot/pull/477))
 - Groups no longer drop a Bot's or your @ calls. Bot-to-Bot relays pause at the group's limit and go on when you press Continue or write. ([#395](https://github.com/Fei2411/DeepSeek-Bot/issues/395), [#433](https://github.com/Fei2411/DeepSeek-Bot/pull/433))
 - On phone-width screens the details panel covers the chat instead of crushing it, and settings fill the screen. ([#438](https://github.com/Fei2411/DeepSeek-Bot/pull/438))
 - On touch screens a tap on a message opens its tools. ([#439](https://github.com/Fei2411/DeepSeek-Bot/pull/439))
@@ -36,6 +39,7 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 - An earlier part of a Bot's chat shows the view cards the Bot displayed there again. ([#415](https://github.com/Fei2411/DeepSeek-Bot/issues/415), [#418](https://github.com/Fei2411/DeepSeek-Bot/pull/418))
 - A question card and a view card open together no longer both answer the same letter key. ([#404](https://github.com/Fei2411/DeepSeek-Bot/issues/404), [#405](https://github.com/Fei2411/DeepSeek-Bot/pull/405))
 - The activity row no longer disappears and comes back while a Bot works through several steps. ([#465](https://github.com/Fei2411/DeepSeek-Bot/issues/465), [#466](https://github.com/Fei2411/DeepSeek-Bot/pull/466))
+- The highlight under the Bot's tab in the side panel covers the whole tab again after you come back from a browser tab. ([#472](https://github.com/Fei2411/DeepSeek-Bot/issues/472), [#474](https://github.com/Fei2411/DeepSeek-Bot/pull/474))
 
 ## [0.2.0] - 2026-10-21
 

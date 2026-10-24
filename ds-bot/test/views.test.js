@@ -48,8 +48,8 @@ test('normalizeView unwraps XML-style arrays and coerces numeric strings', () =>
 })
 
 test('validateView rejects an unknown component with the path and the catalog', () => {
-  const view = stack(text(), metric(), { type: 'chart', data: [1] })
-  assert.equal(validateView(view).error, 'view.children[2].type: unknown component "chart"; allowed: stack, text, metric, table, options, confirm, form, progress')
+  const view = stack(text(), metric(), { type: 'gauge', data: [1] })
+  assert.equal(validateView(view).error, 'view.children[2].type: unknown component "gauge"; allowed: stack, row, text, metric, table, chart, progress, callout, sources, html, slider, choice, toggle, number, options, confirm, form, submit')
   assert.equal(validateView(null).error, 'view: expected a component object')
   assert.equal(validateView([]).error, 'view: expected a component object')
   assert.match(validateView({ type: 'text' }).error, /view\.text: expected a string/)
@@ -124,8 +124,11 @@ test('checkShownView runs the call\'s own checks and names the card and its kind
   assert.match(checkShownView('Big', { type: 'stack', children }).error, new RegExp(`^The view is \\d+ bytes; the limit is ${VIEW_BYTE_LIMIT}\\.$`))
   // ...while the same card normalized fits and validates.
   assert.deepEqual(checkShownView('Pick', { type: 'stack', children: { item: { item: [options()] } } }), { title: 'Pick', view: stack(options()), interactive: true })
-  assert.equal(checkShownView(' ', text()).error, 'Give the view a title.')
-  assert.equal(checkShownView('Card', { type: 'nope' }).error, 'view.type: unknown component "nope"; allowed: stack, text, metric, table, options, confirm, form, progress')
+  // A view needs no title.
+  assert.deepEqual(checkShownView(' ', text()), { title: '', view: text(), interactive: false })
+  assert.deepEqual(checkShownView(undefined, text()), { title: '', view: text(), interactive: false })
+  assert.equal(checkShownView(3, text()).error, 'title: expected a string')
+  assert.equal(checkShownView('Card', { type: 'nope' }).error, 'view.type: unknown component "nope"; allowed: stack, row, text, metric, table, chart, progress, callout, sources, html, slider, choice, toggle, number, options, confirm, form, submit')
   assert.equal(checkShownView('Card', undefined).error, 'view: expected a component object')
   const room = VIEW_BYTE_LIMIT - viewBytes('', text())
   assert.equal(checkShownView('x'.repeat(room + 1), text()).error, `The view is ${VIEW_BYTE_LIMIT + 1} bytes; the limit is ${VIEW_BYTE_LIMIT}.`)

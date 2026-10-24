@@ -21,7 +21,7 @@ import { HANDOFF_ACK, HISTORY_TIMEOUT_MS, REPLY_KIND, SOURCE_KIND } from './cons
 import { CHECKPOINT_PROMPT, STEWARD_SYSTEM, checkpointCount, checkpointTail, checkpointTailNote, checkpointText, linesFor, parseDecision, stewardRequest } from './steward.js'
 import { RESUME_DELAY_MS } from './resume.js'
 import { clip, createClock, escapeRegExp, estimateTokens, splitRef, textOf } from './text.js'
-import { checkShownView, normalizeView, validateViewAnswer, viewSummary } from '../shared/views.js'
+import { checkShownView, inputsSummary, normalizeView, validateViewAnswer, viewSummary } from '../shared/views.js'
 
 // An ask_user card as the user saw it. The user's reply is often just an option label,
 // which means nothing without the card. Arguments the tool would refuse (no question,
@@ -54,7 +54,8 @@ export function viewCardText(args) {
   if (!shown.interactive && card?.await_reply === true) return ''
   if (shown.interactive && card?.await_reply === false) return ''
   const summary = viewSummary(shown.view)
-  return summary === '' ? `[View card] ${shown.title}` : `[View card] ${shown.title}\n${summary}`
+  const head = shown.title === '' ? '[View card]' : `[View card] ${shown.title}`
+  return summary === '' ? head : `${head}\n${summary}`
 }
 
 // What one event adds to a Bot's chat history: an answer of the Bot's (its text, or a
@@ -117,15 +118,19 @@ export function readReply(text) {
   return { questions, answers }
 }
 
-// The submitted component only. A long form is cut so a checkpoint stays small.
-function actionSummary(answer) {
+// The submitted component, and the view's inputs as the user left them. A long form
+// is cut so a checkpoint stays small.
+function actionSummary(answer, view) {
   const values = answer?.values
   if (!isRecord(values)) return '(skipped)'
+  const inputs = inputsSummary(view, values.inputs)
   let text
   if (Array.isArray(values.selected)) text = `selected: ${values.selected.join(', ')}`
   else if (typeof values.confirmed === 'boolean') text = values.confirmed ? 'confirmed' : 'cancelled'
   else if (isRecord(values.fields)) text = Object.entries(values.fields).map(([key, value]) => `${key}: ${value}`).join('; ')
+  else if (inputs !== '') text = ''
   else text = typeof answer.action === 'string' && answer.action !== '' ? answer.action : '(skipped)'
+  if (inputs !== '') text = text === '' ? inputs : `${text}; ${inputs}`
   if (text === '') text = '(empty)'
   return text.length > 500 ? text.slice(0, 500) : text
 }
@@ -136,7 +141,7 @@ export function replyText(text) {
   if (reply.views !== undefined) {
     return reply.views.map((view) => {
       const answer = reply.answers.find(item => item.id === view.id)
-      return `[Answer to view card] ${view.title}\nAnswer: ${actionSummary(answer)}`
+      return `${view.title === '' ? '[Answer to view card]' : `[Answer to view card] ${view.title}`}\nAnswer: ${actionSummary(answer, view.view)}`
     }).join('\n\n')
   }
   return reply.questions.map((question) => {

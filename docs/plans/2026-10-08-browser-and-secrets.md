@@ -67,7 +67,7 @@ Bot 要替用户在网上做事，就会碰到两类东西：网页，以及登�
 - 历史消息里的链接还不能直接在 Bot 浏览器里打开（#114）。
 - 关掉 `auto` 搜索以后，`web_search` 可能报错，恢复方法见 #128。
 - 用 opencode 路由时，原生搜索缺少 `x-opencode-session`（#184）。
-- 导入 cookie 只在桌面应用里有（写进 Bot 自己的存储分区）：cookie 文件（Cookie-Editor JSON、cookies.txt、Playwright storageState）和本机 Chrome/Edge/Firefox 的 profile。Chromium 系是先克隆 profile、再让原浏览器自己解密，不是直接读文件。localStorage 等其他登录状态不导。
+- 导入 cookie 只在桌面应用里有（写进 Bot 自己的存储分区）：cookie 文件（Cookie-Editor JSON、cookies.txt、Playwright storageState）和本机 Chrome/Edge/Firefox 的 profile。Chromium 系是先克隆 profile、再让原浏览器自己解密，不是直接读文件。Windows 上 Chrome/Edge 的新 cookie 用 app-bound 加密（v20），只在原 user-data 目录里能解：克隆目录解不开，这些条目会标成跳过；如果整库都是 v20 会直接提示走文件导入。localStorage 等其他登录状态不导。
 - 密钥只防泄露到模型、记录和其他 Bot 的 shell。有权限的 Bot 在自己的 shell 里能用到值，所以给哪些 Bot 开放，要由用户判断。
 
 ## 变更

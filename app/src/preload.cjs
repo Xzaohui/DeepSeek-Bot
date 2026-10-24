@@ -15,6 +15,8 @@ if (host !== undefined && location.origin === host) {
     // The Bot browsers, in the shape of DSH Desktop's browser bridge so that ds-bot drives both
     // alike; `forget` clears a key's storage, which here outlives the app.
     browser: browserBridge(),
+    // The app's own updater, for the About row's state and buttons.
+    updates: updatesBridge(),
   })
   const caption = process.argv.find(value => value.startsWith('--ds-bot-caption='))
   if (caption !== undefined) {
@@ -58,6 +60,25 @@ function browserBridge() {
         set.delete(listener)
         if (set.size === 0 && listeners.get(id) === set) listeners.delete(id)
       }
+    },
+  }
+}
+
+function updatesBridge() {
+  const listeners = new Set()
+  ipcRenderer.on('ds-bot:app-update-changed', (_event, state) => {
+    for (const listener of [...listeners]) {
+      try { listener(state) } catch (error) { console.error('DeepSeek Bot: an update state handler failed', error) }
+    }
+  })
+  return {
+    state: () => ipcRenderer.invoke('ds-bot:app-update-state'),
+    check: () => ipcRenderer.invoke('ds-bot:app-update-check'),
+    install: () => ipcRenderer.invoke('ds-bot:app-update-install'),
+    open: () => ipcRenderer.invoke('ds-bot:app-update-open'),
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => { listeners.delete(listener) }
     },
   }
 }

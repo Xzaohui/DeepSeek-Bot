@@ -22,10 +22,12 @@ test('viewCardText records only a card the tool would show', () => {
   // A provider-wrapped array normalizes before the summary, as in the tool.
   const wrapped = { title: 'Pick', view: { type: 'stack', children: { item: { item: [choices] } } } }
   assert.equal(viewCardText(wrapped), '[View card] Pick\noptions: A/B')
-  // Calls the tool refuses showed no card: an unknown component, an empty title,
+  // A view needs no title.
+  assert.equal(viewCardText({ title: ' ', view: meter }), '[View card]\nmetric: 进度=70%')
+  // Calls the tool refuses showed no card: an unknown component or a broken one,
   // a wait the card cannot honor, or too many bytes as sent.
   assert.equal(viewCardText({ title: 'X', view: { type: 'chart' } }), '')
-  assert.equal(viewCardText({ title: ' ', view: meter }), '')
+  assert.equal(viewCardText({ title: 'X', view: { type: 'gauge' } }), '')
   assert.equal(viewCardText({ title: 'Meter', view: meter, await_reply: true }), '')
   assert.equal(viewCardText({ title: 'Pick', view: choices, await_reply: false }), '')
   let children = [{ type: 'text', text: 'x' }]

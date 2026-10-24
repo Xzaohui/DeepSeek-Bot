@@ -11,7 +11,8 @@ import { TeamSidebar, ConnectPlugins, YouAvatar, AccountLauncher, FooterAccount,
 import { HeaderPill } from './header.js'
 import { ComposerPlus, ComposerVoice, menuIcons } from './composer.js'
 import { CHATS_SOURCE, atSources } from './at-menu.js'
-import { BtwDock, BtwTurnTail, btwSource } from './btw.js'
+import { BtwDock, BtwTurnTail } from './btw.js'
+import { SIDE_CSS, sideSource } from './side-chat.js'
 import { VOICE_BUNDLE } from './speech.js'
 import { sameVersion } from './dsh-offer.js'
 import { QuestionCard, QuestionDock } from './questions.js'
@@ -33,6 +34,7 @@ import { noteLeft, setUnread, sharedMap, toggleReaction } from './shared-map.js'
 import { freePriority, groupsFor, readMode, surfaceGroups, writeMode } from './surface.js'
 import { installLocale, language, t } from './i18n.js'
 import { noteClientError, quietly } from './diagnostics.js'
+import { RIGHTBAR_ATTRIBUTES, columnOpened, createSwitchWindow, drawerOpened, rightColumnOpen } from './right-panel.js'
 import { ErrorToast, FEEDBACK_CSS } from './feedback.js'
 import { ABOUT_CSS } from './about.js'
 import { MEMBER_CSS, MemberDock } from './member-status.js'
@@ -53,7 +55,7 @@ export function apply(ctx) {
   let seenAt = seenStore.read()
   // `details` is the panel's subject (a Session id); `view` picks details or the
   // subject Bot's browser inside it.
-  const ui = createSource({ details: null, view: 'details', renaming: false, tab: null, newChat: null, exchange: null, menu: null, voice: null, palette: null, quote: null, settings: null, memory: null, toast: null, signIn: null, renameAgent: null, unread: unreadStore.read(), reactions: reactionStore.read(), visits: {} })
+  const ui = createSource({ details: null, view: 'details', renaming: false, tab: null, side: null, newChat: null, exchange: null, menu: null, voice: null, palette: null, quote: null, settings: null, memory: null, toast: null, signIn: null, renameAgent: null, unread: unreadStore.read(), reactions: reactionStore.read(), visits: {} })
   // Bot mode paints the whole team surface; Agent mode withdraws every slot and
   // style so the shell's own interface returns. `plain` stays false until a Bot-mode
   // view hosts a plain session, which drops only the conversation replacements.
@@ -156,6 +158,7 @@ export function apply(ctx) {
     if (value.connectors !== undefined && JSON.stringify(value.connectors) !== JSON.stringify(current.connectors ?? [])) live.connectors = value.connectors
     if (value.capabilityStatuses !== undefined && JSON.stringify(value.capabilityStatuses) !== JSON.stringify(current.capabilityStatuses ?? {})) live.capabilityStatuses = value.capabilityStatuses
     if (value.btwCards !== undefined && JSON.stringify(value.btwCards) !== JSON.stringify(current.btwCards ?? {})) live.btwCards = value.btwCards
+    if (value.sideChats !== undefined && JSON.stringify(value.sideChats) !== JSON.stringify(current.sideChats ?? {})) live.sideChats = value.sideChats
     if (Object.keys(live).length > 0 && current.ready) roster.set({ ...current, ...live })
     if (value.unchanged || (value.revision === current.revision && value.modelsKey === current.modelsKey)) return
     // On a browser with no visit record yet, everything already there counts as seen.
@@ -207,7 +210,7 @@ export function apply(ctx) {
       if (stopped) return
       const value = await call('update-check', { fresh: false }).catch(() => null)
       if (stopped) return
-      if (value) update.set(previous => ({ ...value, app: previous.app }))
+      if (value) update.set(previous => ({ ...value, app: previous.app, ownApp: previous.ownApp }))
       timer = setTimeout(loop, value?.phase === 'installing' || value?.dsh?.phase === 'installing' ? 2000 : 60 * 60_000)
     }
     wakeUpdate = loop
@@ -226,6 +229,19 @@ export function apply(ctx) {
       const unsubscribe = appUpdates.subscribe(take)
       return () => { stopped = true; unsubscribe?.() }
     }, 'ds-bot: app update status')
+  }
+
+  // The DeepSeek Bot app's own updater; its state goes beside the host's answer as ownApp,
+  // which the About row turns into the app's update state and buttons.
+  const ownAppUpdates = globalThis.dsBotApp?.updates ?? null
+  if (ownAppUpdates?.state && ownAppUpdates.subscribe) {
+    ctx.effect(() => {
+      let stopped = false
+      const take = (ownApp) => { if (!stopped && ownApp) update.set(previous => ({ ...previous, ownApp })) }
+      void ownAppUpdates.state().then(take, () => {})
+      const unsubscribe = ownAppUpdates.subscribe(take)
+      return () => { stopped = true; unsubscribe?.() }
+    }, 'ds-bot: own app update state')
   }
 
   // Bot browsers need a webview bridge: DSH Desktop's, or the desktop app's of the
@@ -491,15 +507,6 @@ export function apply(ctx) {
       ui.set(state => ({ ...state, reactions }))
     },
     clearUnread: id => writeUnread(id, false),
-    // DSH's right sidebar (files, terminals), which a plugin may load after this one.
-    hasRightSidebar: () => ctx.get('sidebarRight') !== undefined,
-    toggleRightSidebar: () => {
-      try {
-        ctx.get('sidebarRight')?.toggleExpanded()
-      } catch (error) {
-        actions.reportError(error, 'right-sidebar')
-      }
-    },
   }
   // Without the Desktop bridge these stay undefined, and no browser control renders.
   if (browsers) {
@@ -583,9 +590,14 @@ export function apply(ctx) {
   }
   actions.checkUpdate = async () => {
     const value = await call('update-check', { fresh: true })
-    update.set(previous => ({ ...value, app: previous.app }))
+    update.set(previous => ({ ...value, app: previous.app, ownApp: previous.ownApp }))
     wakeUpdate()
   }
+  // The app's own updater answers through its bridge; the state it pushes back re-renders
+  // the About row.
+  actions.checkOwnApp = async () => { await ownAppUpdates?.check?.() }
+  actions.installOwnApp = async () => { await ownAppUpdates?.install?.() }
+  actions.openOwnApp = async () => { await ownAppUpdates?.open?.() }
   const browserPages = browsers?.pages ?? createSource({})
   const browserTabs = browsers?.tabs ?? createSource({})
   const face = () => ({ actions, hooks: { roster, ui, activity, work, memoryNews, registry, turnClock, live, cards, heldCards, browserPages, browserTabs, surface, update } })
@@ -613,7 +625,6 @@ export function apply(ctx) {
     } }
   }
 
-  actions.cancelBtw = card => call('btw-cancel', { sessionId: card.partId, id: card.id })
   // The dock lives outside the chat snapshot, so it subscribes for the turn that
   // owns a card. Until that turn closes, the card stays by the composer.
   actions.turnFacts = (sessionId) => {
@@ -639,6 +650,69 @@ export function apply(ctx) {
       return () => {}
     }
   }
+  // A terminal tab in DSH's right column, only where the terminal plugin
+  // registered its type and the column face is there.
+  actions.canOpenTerminal = () => ctx.get('sidebarRight') !== undefined && ctx.get('sidebarRightTabs')?.get('terminal') !== undefined
+  actions.newTerminal = () => {
+    // The column takes the drawer's space: hand it over first.
+    actions.closePanel()
+    try {
+      ctx.get('sidebarRight')?.openTab('terminal')
+    } catch (error) {
+      actions.reportError(error, 'right-sidebar')
+    }
+  }
+  // The same hand-off for DSH's files tab, where that plugin registered it.
+  actions.canOpenFiles = () => ctx.get('sidebarRight') !== undefined && ctx.get('sidebarRightTabs')?.get('files') !== undefined
+  actions.openFiles = () => {
+    actions.closePanel()
+    try {
+      ctx.get('sidebarRight')?.openTab('files')
+    } catch (error) {
+      actions.reportError(error, 'right-sidebar')
+    }
+  }
+
+  // The drawer and DSH's right column never share the window: whichever the
+  // user asked for last wins. The column's state is read off the frame's
+  // attributes through a MutationObserver. `mounted` moves before the DOM of a
+  // Session switch does, so a switch opens a timed window (createSwitchWindow):
+  // an attribute batch inside it is the switch revealing that Session's own
+  // column — the drawer wins and folds it back — while one outside it is the
+  // user's own opening and takes the space.
+  ctx.effect(() => {
+    const sidebar = ctx.get('sidebarRight')
+    if (!sidebar) return undefined
+    let open = rightColumnOpen(document)
+    // Long enough for a fullscreen panel's slide, which reports only once it ends.
+    const switchWindow = createSwitchWindow(done => setTimeout(done, 400))
+    const collapseColumn = () => {
+      try {
+        if (sidebar.isExpanded()) sidebar.toggleExpanded()
+      } catch (error) {
+        actions.reportError(error, 'right-sidebar')
+      }
+    }
+    const observer = new MutationObserver(() => {
+      const next = rightColumnOpen(document)
+      const opening = next && !open
+      open = next
+      const verdict = opening ? columnOpened(ui.getSnapshot().details !== null, switchWindow.pending) : null
+      if (verdict === 'close-drawer') actions.closePanel()
+      else if (verdict === 'collapse-column') collapseColumn()
+    })
+    observer.observe(document.documentElement, {
+      subtree: true, attributes: true, attributeFilter: RIGHTBAR_ATTRIBUTES,
+    })
+    const offMounted = sidebar.mounted.subscribe(() => switchWindow.moved())
+    let drawer = ui.getSnapshot().details !== null
+    const offUi = ui.subscribe(() => {
+      const next = ui.getSnapshot().details !== null
+      if (next && !drawer && drawerOpened(rightColumnOpen(document)) === 'collapse-column') collapseColumn()
+      drawer = next
+    })
+    return () => { observer.disconnect(); offMounted(); offUi() }
+  }, 'ds-bot: one right panel')
 
   // A Bot surface owns the cells it shadows. It starts far below the -10 that plugins
   // commonly use and goes below whatever already holds the cell, so a plugin that
@@ -663,7 +737,7 @@ export function apply(ctx) {
         const launched = sessionId => controllerOf(sessionId)?.launcher.getSnapshot() === CHATS_SOURCE
         const offs = [
           ...atSources({ roster, sessions: ctx.sessions, launched, iconFor: menuIcons(roster) }).map(source => triggers.registerSource(source)),
-          triggers.registerSource(btwSource({ roster })),
+          triggers.registerSource(sideSource({ roster, actions })),
         ]
         atMenu = { controllerOf }
         return () => {
@@ -696,7 +770,9 @@ export function apply(ctx) {
     () => installCompiledStyles(MEMBER_CSS, 'members'),
     () => installCompiledStyles(USER_MESSAGE_CSS, 'user-messages'),
     () => installCompiledStyles(WIDGET_CSS, 'widgets'),
-    browsers ? () => installCompiledStyles(BROWSER_CSS, 'browser') : null,
+    () => installCompiledStyles(SIDE_CSS, 'side'),
+    // Strip and panel styles also serve the side-chat tabs, which need no bridge.
+    () => installCompiledStyles(BROWSER_CSS, 'browser'),
     () => installTheme(),
     () => shadow('sidebar.workspaces', { priority: BOT_PRIORITY, inject: face }, TeamSidebar),
     () => shadow('sidebar.brand.mark', { priority: BOT_PRIORITY }, BrandMark),

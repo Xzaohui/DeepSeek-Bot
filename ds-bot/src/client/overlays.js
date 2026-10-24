@@ -27,7 +27,7 @@ export function Overlays({ useRoster, useUi, useSessions, useSessionStatus, useA
     previous.current = current
     if (current) actions.followPanel?.(current)
   }, [current])
-  const open = ui.details ? { id: ui.details, view: ui.view ?? 'details', renaming: ui.renaming, tab: ui.tab } : null
+  const open = ui.details ? { id: ui.details, view: ui.view ?? 'details', renaming: ui.renaming, tab: ui.tab, side: ui.side } : null
   const [kept, setKept] = useState(open)
   useEffect(() => {
     if (open) { setKept(open); return undefined }
